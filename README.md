@@ -1,1 +1,1 @@
-# ARTM-MZ-plugins
+このリポジトリは、Artemis氏作成のプラグインをまとめたものです。
