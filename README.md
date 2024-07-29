@@ -1,1 +1,1 @@
-# ARTM-MZ-plugins-
+# ARTM-MZ-plugins
