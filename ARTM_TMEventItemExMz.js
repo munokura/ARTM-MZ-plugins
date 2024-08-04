@@ -6,6 +6,8 @@
 // ===================================================
 // [Version]
 // 1.0.0 初版
+// 1.0.1 アイテム選択拡張時のキャンセルボタン位置を調整
+// 1.0.2 タッチUI無効化時にエラーが出る問題を修正 修正者:@n2naokun
 //=============================================================================
 // TMPlugin - アイテム選択拡張
 // バージョン: 1.1.0
@@ -26,6 +28,12 @@
  * @help ARTM_TMEventItemExMz
  * tomoaky様作「アイテム選択拡張 ver1.1.0」プラグインのMZ移植版です。
  * 基本的な動作は変わっておりません。
+ * 
+ * Artemis様がGitHubにて公開されていたものの不具合を修正したバージョンです。
+ * このファイルの配布元リポジトリ
+ * https://github.com/n2naokun/RPGMZ-ARTM_TMEventItemExMz/blob/main/ARTM_TMEventItemExMz.js
+ * 直リンク
+ * https://raw.githubusercontent.com/n2naokun/RPGMZ-ARTM_TMEventItemExMz/main/ARTM_TMEventItemExMz.js
  *
  * 【使い方】
  *   アイテムタイプごとに以下の設定を変更できます。
@@ -197,135 +205,194 @@ Imported.TMEventItemEx = true;
         $gameTemp.setEventItemSubCategory(args.name);
     });
 
-  //-----------------------------------------------------------------------------
-  // Game_Temp
-  //
+    //-----------------------------------------------------------------------------
+    // Game_Temp
+    //
 
-  Game_Temp.prototype.setEventItemSubCategory = function(category) {
-    this._eventItemSubCategory = category;
-  };
+    Game_Temp.prototype.setEventItemSubCategory = function(category) {
+        this._eventItemSubCategory = category;
+    };
 
-  Game_Temp.prototype.eventItemSubCategory = function() {
-    return this._eventItemSubCategory;
-  };
+    Game_Temp.prototype.eventItemSubCategory = function() {
+        return this._eventItemSubCategory;
+    };
 
-  //-----------------------------------------------------------------------------
-  // Window_EventItem
-  //
+    //-----------------------------------------------------------------------------
+    // Window_EventItem
+    //
 
-  Window_EventItem.prototype.isHelpWindowEnabled = function() {
-    const itypeId = $gameMessage.itemChoiceItypeId();
-    if (itypeId === 1) {
-      return TMPlugin.EventItemEx.HelpWindowEnabledItem;
-    } else if (itypeId === 2) {
-      return TMPlugin.EventItemEx.HelpWindowEnabledKey;
-    } else if (itypeId === 3) {
-      return TMPlugin.EventItemEx.HelpWindowEnabledA;
-    } else if (itypeId === 4) {
-      return TMPlugin.EventItemEx.HelpWindowEnabledB;
-    }
-    return false;
-  };
+    Window_EventItem.prototype.isHelpWindowEnabled = function() {
+        const itypeId = $gameMessage.itemChoiceItypeId();
+        if (itypeId === 1) {
+            return TMPlugin.EventItemEx.HelpWindowEnabledItem;
+        } else if (itypeId === 2) {
+            return TMPlugin.EventItemEx.HelpWindowEnabledKey;
+        } else if (itypeId === 3) {
+            return TMPlugin.EventItemEx.HelpWindowEnabledA;
+        } else if (itypeId === 4) {
+            return TMPlugin.EventItemEx.HelpWindowEnabledB;
+        }
+        return false;
+    };
 
-  const _Window_EventItem_start = Window_EventItem.prototype.start;
-  Window_EventItem.prototype.start = function() {
-    this.height = this.fittingHeight(this.numVisibleRows());
-    _Window_EventItem_start.call(this);
-    if (this.isHelpWindowEnabled()) this._helpWindow.open();
-  };
+    const _Window_EventItem_start = Window_EventItem.prototype.start;
+    Window_EventItem.prototype.start = function() {
+        this.height = this.fittingHeight(this.numVisibleRows());
+        _Window_EventItem_start.call(this);
+        if (this.isHelpWindowEnabled()) {
+            this._helpWindow.open();
+        }
+    };
+    
+    Window_EventItem.prototype.close = function() {
+        SceneManager._scene.removeChild(this._cancelButtonGbl);
+        Window_Base.prototype.close.call(this);
+    };
 
-  const _Window_EventItem_numVisibleRows = Window_EventItem.prototype.numVisibleRows;
-  Window_EventItem.prototype.numVisibleRows = function() {
-    const itypeId = $gameMessage.itemChoiceItypeId();
-    if (itypeId === 1) {
-      return TMPlugin.EventItemEx.NumVisibleRowsItem;
-    } else if (itypeId === 2) {
-      return TMPlugin.EventItemEx.NumVisibleRowsKey;
-    } else if (itypeId === 3) {
-      return TMPlugin.EventItemEx.NumVisibleRowsA;
-    } else if (itypeId === 4) {
-      return TMPlugin.EventItemEx.NumVisibleRowsB;
-    }
-    return _Window_EventItem_numVisibleRows.call(this);
-  };
+    const _Window_EventItem_numVisibleRows = Window_EventItem.prototype.numVisibleRows;
+    Window_EventItem.prototype.numVisibleRows = function() {
+        const itypeId = $gameMessage.itemChoiceItypeId();
+        if (itypeId === 1) {
+            return TMPlugin.EventItemEx.NumVisibleRowsItem;
+        } else if (itypeId === 2) {
+            return TMPlugin.EventItemEx.NumVisibleRowsKey;
+        } else if (itypeId === 3) {
+            return TMPlugin.EventItemEx.NumVisibleRowsA;
+        } else if (itypeId === 4) {
+            return TMPlugin.EventItemEx.NumVisibleRowsB;
+        }
+        return _Window_EventItem_numVisibleRows.call(this);
+    };
 
-  const _Window_EventItem_updatePlacement = Window_EventItem.prototype.updatePlacement;
-  Window_EventItem.prototype.updatePlacement = function() {
-    const enabled = this.isHelpWindowEnabled();
-    let completed = false;
-    if (!$gameMessage.hasText()) {
-      switch (TMPlugin.EventItemEx.FixPlacement) {
-        case "top":
-          this.y = enabled ? this._helpWindow.height : 0;
-          completed = true;
-          break;
-        case "bottom":
-          this.y = Graphics.boxHeight - this.height;
-          completed = true;
-      }
-    }
-    if (enabled && !completed) {
-      if (this._messageWindow.y >= Graphics.boxHeight / 2) {
-        this.y = this._helpWindow.height;
-        completed = true;
-      } else {
-        this.y = Graphics.boxHeight - this.height;
-        completed = true;
-      }
-    } else if (!completed) {
-      _Window_EventItem_updatePlacement.call(this);
-      completed = true;
-    }
-    if (enabled) {
-      this._helpWindow.y = this.y - this._helpWindow.height;
-    }
-  };
+    const _Window_EventItem_updatePlacement = Window_EventItem.prototype.updatePlacement;
+    Window_EventItem.prototype.updatePlacement = function() {
+        const enabled = this.isHelpWindowEnabled();
+        const helpWindow = this._helpWindow;
+        let completed = this.updatePlacementSel();
+        if (enabled && !completed) {
+            if (this._messageWindow.y >= Graphics.boxHeight / 2) {
+                this.y = helpWindow.height;
+                completed = true;
+            } else {
+                this.y = Graphics.boxHeight - this.height;
+                completed = true;
+            }
+        } else if (!completed) {
+            _Window_EventItem_updatePlacement.call(this);
+            completed = true;
+        }
+        if (enabled) {
+            helpWindow.y = this.y - helpWindow.height;
+        }
+    };
 
-  const _Window_EventItem_includes = Window_EventItem.prototype.includes;
-  Window_EventItem.prototype.includes = function(item) {
-    if (!_Window_EventItem_includes.call(this, item)) return false;
-    const subCategory = $gameTemp.eventItemSubCategory();
-    return !subCategory || item.meta.subCategory === subCategory;
-  };
+    Window_EventItem.prototype.updatePlacementSel = function() {
+        const enabled = this.isHelpWindowEnabled();
+        let completed = false;
+        if (!$gameMessage.hasText()) {
+            switch (TMPlugin.EventItemEx.FixPlacement) {
+                case "top":
+                    this.y = enabled ? this._helpWindow.height : 0;
+                    completed = true;
+                    break;
+                case "bottom":
+                    this.y = Graphics.boxHeight - this.height;
+                    completed = true;
+            }
+        }
+        return completed;
+    };
 
-  const _Window_EventItem_onOk = Window_EventItem.prototype.onOk;
-  Window_EventItem.prototype.onOk = function() {
-    _Window_EventItem_onOk.call(this);
-    this._helpWindow.close();
-    $gameTemp.setEventItemSubCategory(null);
-  };
+    const _Window_EventItem_createCancelButton = Window_EventItem.prototype.createCancelButton;
+    Window_EventItem.prototype.createCancelButton = function() {
+        _Window_EventItem_createCancelButton.call(this);
+        if (ConfigManager.touchUI) {
+            this._cancelButtonGbl = new Sprite_Button("cancel");
+            this._cancelButtonGbl.visible = false;
+            this.removeChild(this._cancelButton);
+        }
+    };
 
-  const _Window_EventItem_onCancel = Window_EventItem.prototype.onCancel;
-  Window_EventItem.prototype.onCancel = function() {
-    _Window_EventItem_onCancel.call(this);
-    this._helpWindow.close();
-    $gameTemp.setEventItemSubCategory(null);
-  };
+    const _Window_EventItem_placeCancelButton = Window_EventItem.prototype.placeCancelButton;
+    Window_EventItem.prototype.placeCancelButton = function() {
+        _Window_EventItem_placeCancelButton.call(this);
+        // 2022/07/07 タッチUI無効化時のエラーを修正
+        if (this._cancelButtonGbl && this._cancelButton) {
+            const spacing = 8;
+            switch (TMPlugin.EventItemEx.FixPlacement) {
+                case "top":
+                    this.copyCancelButton();
+                    this._cancelButtonGbl.y = this.y + this.height;
+                    this._cancelButtonGbl.y += spacing;
+                    SceneManager._scene.addChild(this._cancelButtonGbl);
+                    break;
+                case "bottom":
+                    const height = this._cancelButtonGbl.height;
+                    this.copyCancelButton();
+                    if (this.isHelpWindowEnabled()) {
+                        this._cancelButtonGbl.y = this._helpWindow.y - height;
+                    } else {
+                        this._cancelButtonGbl.y = this.y - height;
+                    }
+                    this._cancelButtonGbl.y -= spacing;
+                    SceneManager._scene.addChild(this._cancelButtonGbl);
+            }
+        }
+        // 2022/07/07 タッチUI無効化時のエラーを修正 ここまで
+    };
 
-  Window_EventItem.prototype.needsNumber = function() {
-      const itypeId = $gameMessage.itemChoiceItypeId();
-      return (itypeId === 1 && TMPlugin.EventItemEx.ShowItemNumberItem) ||
-             (itypeId === 2 && TMPlugin.EventItemEx.ShowItemNumberKey) ||
-             (itypeId === 3 && TMPlugin.EventItemEx.ShowItemNumberA) ||
-             (itypeId === 4 && TMPlugin.EventItemEx.ShowItemNumberB);
-  };
+    Window_EventItem.prototype.copyCancelButton = function() {
+        this._cancelButtonGbl.x = this._cancelButton.x;
+        this._cancelButtonGbl.width = this._cancelButton.width;
+        this._cancelButtonGbl.height = this._cancelButton.height;
+        this._cancelButtonGbl.visible = true;
+    };
 
-  //-----------------------------------------------------------------------------
-  // Scene_Message
-  //
+    const _Window_EventItem_includes = Window_EventItem.prototype.includes;
+    Window_EventItem.prototype.includes = function(item) {
+        if (!_Window_EventItem_includes.call(this, item)) return false;
+        const subCategory = $gameTemp.eventItemSubCategory();
+        return !subCategory || item.meta.subCategory === subCategory;
+    };
 
-  const _Scene_Message_createEventItemWindow = Scene_Message.prototype.createEventItemWindow;
-  Scene_Message.prototype.createEventItemWindow = function() {
-    const wx = 0;
-    const wy = 0;
-    const ww = Graphics.boxWidth;
-    const wh = this.calcWindowHeight(2, false);
-    const rect = new Rectangle(wx, wy, ww, wh);
-    _Scene_Message_createEventItemWindow.call(this);
-    this._messageWindow._helpWindow = new Window_Help(rect);
-    this._messageWindow._helpWindow.openness = 0;
-    this._eventItemWindow.setHelpWindow(this._messageWindow._helpWindow);
-    this.addWindow(this._messageWindow._helpWindow);
-  };
+    const _Window_EventItem_onOk = Window_EventItem.prototype.onOk;
+    Window_EventItem.prototype.onOk = function() {
+        _Window_EventItem_onOk.call(this);
+        this._helpWindow.close();
+        $gameTemp.setEventItemSubCategory(null);
+    };
+
+    const _Window_EventItem_onCancel = Window_EventItem.prototype.onCancel;
+    Window_EventItem.prototype.onCancel = function() {
+        _Window_EventItem_onCancel.call(this);
+        this._helpWindow.close();
+        $gameTemp.setEventItemSubCategory(null);
+    };
+
+    Window_EventItem.prototype.needsNumber = function() {
+        const itypeId = $gameMessage.itemChoiceItypeId();
+        return (itypeId === 1 && TMPlugin.EventItemEx.ShowItemNumberItem) ||
+               (itypeId === 2 && TMPlugin.EventItemEx.ShowItemNumberKey) ||
+               (itypeId === 3 && TMPlugin.EventItemEx.ShowItemNumberA) ||
+               (itypeId === 4 && TMPlugin.EventItemEx.ShowItemNumberB);
+    };
+
+    //-----------------------------------------------------------------------------
+    // Scene_Message
+    //
+
+    const _Scene_Message_createEventItemWindow = Scene_Message.prototype.createEventItemWindow;
+    Scene_Message.prototype.createEventItemWindow = function() {
+        const wx = 0;
+        const wy = 0;
+        const ww = Graphics.boxWidth;
+        const wh = this.calcWindowHeight(2, false);
+        const rect = new Rectangle(wx, wy, ww, wh);
+        _Scene_Message_createEventItemWindow.call(this);
+        this._messageWindow._helpWindow = new Window_Help(rect);
+        this._messageWindow._helpWindow.openness = 0;
+        this._eventItemWindow.setHelpWindow(this._messageWindow._helpWindow);
+        this.addWindow(this._messageWindow._helpWindow);
+    };
 
 })();
